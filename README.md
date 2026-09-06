@@ -35,10 +35,23 @@ pebble install --emulator basalt   # run in QEMU
 pebble logs --emulator basalt
 ```
 
+## Install on your watch
+
 The bundle targets every platform (aplite … emery/gabbro), so the same `.pbw`
-runs on a Pebble Time 2 (emery) via the Core Devices app: sideload the `.pbw`,
-then open the app's **Settings** (gear) on your phone and paste your shared list
-URL, e.g. `https://www.heb.com/shopping-list/shared/<uuid>`.
+runs on a Pebble Time 2 (emery) via the Core Devices app. Two ways to get it
+there:
+
+1. Copy `build/heb-watch.pbw` to your phone (AirDrop / file transfer) and open
+   it with the Core Devices app (share sheet on iOS, file manager on Android).
+2. Or enable the Developer Connection in the Core Devices app (phone and
+   computer on the same Wi-Fi) and run `pebble install --phone <phone-ip>`.
+
+Then open the app's **Settings** (gear) in the Core Devices app and paste your
+shared list URL, e.g. `https://www.heb.com/shopping-list/shared/<uuid>`.
+
+Verified live (Sept 2026): real list from `www.heb.com/graphql` through the
+Core Devices app on a Pebble Time 2 — fetch, display, and check-off all work;
+the phone-side request is not blocked by H-E-B's bot protection.
 
 ## How it works
 
