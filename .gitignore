@@ -17,3 +17,5 @@ __pycache__/
 # npm
 npm-debug.log
 package-lock.json
+# waf lock artifact
+.lock-waf_darwin_build
