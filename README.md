@@ -3,12 +3,16 @@
 A Pebble watchapp (Core Devices SDK / `pebble-tool`) that shows an H-E-B shared
 shopping list on your wrist and lets you check items off while you shop.
 
-* Item name is the top line(s) — long names **wrap** instead of truncating.
+* Item name is the top line(s) — long names **wrap** (up to 3 lines) instead of truncating.
 * Aisle / store location is shown as the subtitle.
-* Select toggles an item's check; long-press select refreshes from H-E-B.
+* Items are grouped by category with inverted section headers.
+* Select toggles an item's check (box fills + strikethrough); long-press select
+  refreshes from H-E-B; select on the info row also refreshes.
 * Check-off state is **local** (per item, persisted on the phone) — H-E-B's public
   API does not expose a check-off mutation for shared lists, which are view-only
   to guests. See `docs/api-notes.md` for details.
+* The list is cached on the phone, so the app opens instantly with the last known
+  list and refreshes in the background.
 
 ## Setup
 
@@ -23,14 +27,15 @@ pebble package install   # installs @rebble/clay from package.json deps
 ## Build
 
 ```sh
-pebble build           # produces build/HEB-List.pbw
+pebble build           # produces build/heb-watch.pbw
 pebble install --emulator basalt   # run in QEMU
 pebble logs --emulator basalt
 ```
 
-Install on a real watch with the Core Devices app (sideload the `.pbw`), then open
-the app's **Settings** (gear) on your phone and paste your shared list URL, e.g.
-`https://www.heb.com/shopping-list/shared/<uuid>`.
+The bundle targets every platform (aplite … emery/gabbro), so the same `.pbw`
+runs on a Pebble Time 2 (emery) via the Core Devices app: sideload the `.pbw`,
+then open the app's **Settings** (gear) on your phone and paste your shared list
+URL, e.g. `https://www.heb.com/shopping-list/shared/<uuid>`.
 
 ## How it works
 
@@ -41,4 +46,19 @@ HEB (www.heb.com/graphql)  <-minimal GraphQL query-  PebbleKit JS (src/pkjs)
                           Watch UI (src/c) — MenuLayer, wrapped text, checkbox
 ```
 
-See `docs/api-notes.md` for the reverse-engineered H-E-B API.
+## Emulator testing (no real list needed)
+
+The settings UI can't be driven in QEMU, so settings are injected directly into
+the emulator JS runtime's localStorage:
+
+```sh
+python3 tools/mock-heb-graphql.py &            # mock HEB gateway on :8917
+python3 tools/inject_settings.py basalt \
+  "http://localhost:8917/graphql/12345678-1234-4321-8765-432109876543"
+pebble install --emulator basalt
+```
+
+Any URL containing a UUID that is **not** heb.com is used verbatim as the GraphQL
+endpoint (that's how the mock works; it also doubles as a relay escape hatch if
+H-E-B's bot protection ever blocks the phone). See `docs/api-notes.md` for the
+reverse-engineered H-E-B API.

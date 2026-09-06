@@ -249,7 +249,17 @@ static void draw_header(GContext *ctx, const Layer *cell_layer, uint16_t section
   if (section_index > s_section_count) return;
   const Section *sec = &s_sections[section_index - 1];
   if (sec->count == 0) return;
-  menu_cell_basic_header_draw(ctx, cell_layer, s_items[sec->start].group);
+  // Inverted header bar: white background, black text (menu_cell_basic_header_draw
+  // alone renders black text and is invisible on this menu's black background).
+  GRect bounds = layer_get_bounds(cell_layer);
+  graphics_context_set_fill_color(ctx, GColorWhite);
+  graphics_fill_rect(ctx, bounds, 0, GCornerNone);
+  graphics_context_set_text_color(ctx, GColorBlack);
+  graphics_draw_text(ctx, s_items[sec->start].group,
+                     fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),
+                     GRect(bounds.origin.x + 3, bounds.origin.y,
+                           bounds.size.w - 6, bounds.size.h),
+                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 
 static int16_t get_cell_height(struct MenuLayer *menu_layer, MenuIndex *cell_index,
@@ -429,11 +439,12 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   // Start of a fresh list
   if ((t = dict_find(iter, MESSAGE_KEY_AppListBegin))) {
     uint16_t total = (uint16_t)tuple_int(dict_find(iter, MESSAGE_KEY_AppItemCount));
-    s_item_total = total;
+    APP_LOG(APP_LOG_LEVEL_INFO, "begin: total=%u", total);
     Tuple *name = dict_find(iter, MESSAGE_KEY_AppListName);
     safe_copy(s_list_name, sizeof(s_list_name),
               name ? name->value->cstring : "HEB List");
     s_list_flags = 0;
+    // alloc_items() resets the counters, so set s_item_total afterwards.
     if (!alloc_items(total)) {
       s_status = ST_ERROR;
       safe_copy(s_status_message, sizeof(s_status_message),
@@ -442,6 +453,7 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
       menu_reload();
       return;
     }
+    s_item_total = total;
     s_status = ST_LOADING;
     safe_copy(s_status_message, sizeof(s_status_message), "Loading...");
     menu_reload();
@@ -481,6 +493,8 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
       s_status = ST_EMPTY;
     }
     rebuild_sections();
+    APP_LOG(APP_LOG_LEVEL_INFO, "end: count=%u total=%u secs=%u",
+            s_item_count, s_item_total, s_section_count);
     menu_reload();
     return;
   }

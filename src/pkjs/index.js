@@ -72,6 +72,8 @@ var QUERY = [
 
 var items = [];          // current snapshot sent to the watch
 var fetching = false;
+var streaming = false;   // a list stream to the watch is in progress
+var pendingFetch = false;
 
 function settings() {
   try {
@@ -115,6 +117,23 @@ function extractListId(url) {
   return m ? m[0].toLowerCase() : null;
 }
 
+// Normalize a raw GraphQL list item into the shape sent to the watch.
+// Items are an interface: ProductShoppingListItemV2 (product record, has an
+// aisle/location) or GenericShoppingListItemV2 (free text, no location).
+function mapItem(raw) {
+  var name = (raw.product && raw.product.fullDisplayName) || raw.genericName || 'Item';
+  var location = (raw.product && raw.product.productLocation &&
+                  raw.product.productLocation.location) || '';
+  return {
+    id: raw.id,
+    name: String(name),
+    location: String(location),
+    group: String(raw.groupHeader || ''),
+    qty: raw.quantity || 1,
+    checked: !!raw.checked
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Sending to the watch
 // ---------------------------------------------------------------------------
@@ -150,21 +169,31 @@ function sendItem(i, onDone) {
 }
 
 // Serialize the current snapshot to the watch, item by item (each item fits in
-// a single AppMessage).
-function sendList(listName, cached) {
+// a single AppMessage). Only one stream may run at a time — interleaved streams
+// would mix stale and fresh item content on the watch.
+function sendList(listName, cached, onDone) {
+  streaming = true;
   var count = items.length;
   sendDict({
     AppListBegin: 1,
     AppItemCount: count,
     AppListName: String(listName || 'HEB List').substring(0, 47)
   }, function (ok) {
-    if (!ok) return;
+    if (!ok) {
+      streaming = false;
+      if (onDone) onDone(false);
+      return;
+    }
     var i = 0;
 
     function next() {
       if (i >= count) {
         var status = count === 0 ? ST_EMPTY : (cached ? ST_CACHED : ST_READY);
-        sendDict({ AppEndOfList: 1, AppListFlags: cached ? FLAG_CACHED : 0, AppStatus: status });
+        sendDict({ AppEndOfList: 1, AppListFlags: cached ? FLAG_CACHED : 0, AppStatus: status },
+                 function () {
+                   streaming = false;
+                   if (onDone) onDone(true);
+                 });
         return;
       }
       sendItem(i, function (okItem) {
@@ -172,6 +201,8 @@ function sendList(listName, cached) {
           // Connection dropped mid-list; tell the watch so it is not stuck
           // at "Loading..." (this send will usually fail too, but try).
           sendStatus(ST_ERROR, 'Connection lost while syncing list');
+          streaming = false;
+          if (onDone) onDone(false);
           return;
         }
         i++;
@@ -215,8 +246,20 @@ function xhrPost(url, body, onDone) {
   xhr.send(body);
 }
 
+// A refresh requested while a stream is running is deferred until it finishes.
+function listStreamDone() {
+  if (pendingFetch && !streaming && !fetching) {
+    pendingFetch = false;
+    fetchList();
+  }
+}
+
 function fetchList() {
   if (fetching) return;
+  if (streaming) {
+    pendingFetch = true;
+    return;
+  }
   var url = settings().ListUrl;
   var listId = extractListId(url);
   if (!listId) {
@@ -256,7 +299,7 @@ function fetchList() {
     if (parsed && parsed.data && parsed.data.getShoppingListV2 &&
         parsed.data.getShoppingListV2.itemPage) {
       var list = parsed.data.getShoppingListV2;
-      var rawItems = (list.itemPage.items || []).slice(0, MAX_ITEMS);
+      var rawItems = (list.itemPage.items || []).slice(0, MAX_ITEMS).map(mapItem);
       saveCachedList({ name: list.name, items: rawItems }, listId);
       presentList(list.name, rawItems, listId, false);
       return;
@@ -293,11 +336,11 @@ function fetchList() {
   });
 }
 
-function presentList(name, rawItems, listId, cached) {
+function presentList(name, rawItems, listId, cached, onDone) {
   var hideChecked = !!settings().HideChecked;
   var all = applyLocalChecks(listId, rawItems);
   items = hideChecked ? all.filter(function (it) { return !it.checked; }) : all;
-  sendList(name, cached);
+  sendList(name, cached, onDone ? onDone : listStreamDone);
 }
 
 // ---------------------------------------------------------------------------
@@ -339,16 +382,19 @@ Pebble.addEventListener('webviewclosed', function (e) {
 // ---------------------------------------------------------------------------
 
 Pebble.addEventListener('ready', function () {
-  var url = settings().ListUrl;
-  if (!extractListId(url)) {
+  var listId = extractListId(settings().ListUrl);
+  if (!listId) {
     sendStatus(ST_NO_URL, 'Set list URL in phone settings');
     return;
   }
-  // Serve cache immediately (fast startup), then refresh in the background.
-  var listId = extractListId(url);
+  // Serve cache immediately (fast startup), then refresh in the background —
+  // sequentially, so the two list streams never interleave.
   var cache = cachedList();
   if (cache && cache.url === listId && cache.payload && cache.payload.items) {
-    presentList(cache.payload.name, cache.payload.items, listId, true);
+    presentList(cache.payload.name, cache.payload.items, listId, true, function () {
+      fetchList();
+    });
+    return;
   }
   fetchList();
 });

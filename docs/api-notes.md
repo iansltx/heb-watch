@@ -102,6 +102,13 @@ Notes:
 implements check-off locally on the phone (persisted per item id in PebbleKit JS
 `localStorage`), merged over live server state on each refresh.
 
+## Relay / mock escape hatch
+
+If the phone's XHRs ever get blocked by the WAF, any settings URL containing a UUID
+that is not `heb.com` is used verbatim as the GraphQL endpoint (`endpointFor()` in
+`src/pkjs/index.js`). `tools/mock-heb-graphql.py` serves the same response shape for
+emulator testing and can be adapted into a cookie-carrying relay in that case.
+
 ## Settings
 
 * App settings page is generated locally by Clay (`@rebble/clay`) as a `data:` URI —
