@@ -543,6 +543,12 @@ static void init(void) {
   s_font_name = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
   s_font_sub = fonts_get_system_font(FONT_KEY_GOTHIC_14);
 
+  // Opt into touch navigation (Core Time 2 / Core 2 Duo): the firmware's gesture
+  // bridge maps swipes/taps on the MenuLayer to up/down/select button presses
+  // and the menu scrolls by touch natively. Buttons keep working either way;
+  // takes effect once "Touch navigation" is enabled in the watch's settings.
+  app_touch_navigation_enable(true);
+
   safe_copy(s_list_name, sizeof(s_list_name), "HEB List");
   safe_copy(s_status_message, sizeof(s_status_message), "Connecting...");
 

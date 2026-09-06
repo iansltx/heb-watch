@@ -8,6 +8,9 @@ shopping list on your wrist and lets you check items off while you shop.
 * Items are grouped by category with inverted section headers.
 * Select toggles an item's check (box fills + strikethrough); long-press select
   refreshes from H-E-B; select on the info row also refreshes.
+* Touch (Core Time 2 / Core 2 Duo): swipe to scroll the list, tap an item to
+  check it off, tap the info row to refresh. Requires *Touch navigation*
+  enabled in the watch's system settings; buttons keep working either way.
 * Check-off state is **local** (per item, persisted on the phone) — H-E-B's public
   API does not expose a check-off mutation for shared lists, which are view-only
   to guests. See `docs/api-notes.md` for details.
