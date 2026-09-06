@@ -19,6 +19,11 @@
 #define TEXT_X (BOX_X + BOX_SIZE + 6)
 #define CELL_PAD 4
 
+// Wrap limits — measurement and drawing must use the same boxes so cell height
+// always matches what is drawn.
+#define NAME_LINES 3
+#define SUB_LINES 2
+
 // Status codes (AppStatus)
 enum {
   ST_LOADING = 0,
@@ -118,11 +123,15 @@ static void rebuild_sections(void) {
     bool boundary = (i == s_item_count) ||
                     (strncmp(s_items[i].group, s_items[i - 1].group, GROUP_LEN) != 0);
     if (boundary) {
-      if (s_section_count < MAX_SECTIONS) {
-        s_sections[s_section_count].start = start;
-        s_sections[s_section_count].count = i - start;
-        s_section_count++;
+      if (s_section_count >= MAX_SECTIONS) {
+        // Too many groups: fold the remainder into the last section rather
+        // than dropping those items from the list.
+        s_sections[MAX_SECTIONS - 1].count = s_item_count - s_sections[MAX_SECTIONS - 1].start;
+        break;
       }
+      s_sections[s_section_count].start = start;
+      s_sections[s_section_count].count = i - start;
+      s_section_count++;
       start = i;
     }
   }
@@ -170,6 +179,21 @@ static void build_subtitle(const Item *it, char *buf, size_t cap) {
   }
 }
 
+// Line height of a font, derived by measuring reference glyphs.
+static int16_t font_line_height(GFont font) {
+  GRect box = GRect(0, 0, 100, 300);
+  return (int16_t)graphics_text_layout_get_content_size(
+      "Mg", font, box, GTextOverflowModeWordWrap, GTextAlignmentLeft).h;
+}
+
+// Content size of text wrapped in a box `lines` tall — clamped to that height,
+// so callers can lay out and draw with identical boxes.
+static GSize measure_text(const char *text, GFont font, int16_t w, int16_t lines) {
+  GRect box = GRect(0, 0, w, lines * font_line_height(font));
+  return graphics_text_layout_get_content_size(
+      text, font, box, GTextOverflowModeWordWrap, GTextAlignmentLeft);
+}
+
 static void draw_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index,
                      void *callback_context) {
   GRect cell = layer_get_bounds(cell_layer);
@@ -197,7 +221,9 @@ static void draw_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_ind
   draw_checkbox(ctx, cell.origin.y, highlighted, it->checked);
 
   int16_t w = cell.size.w - TEXT_X - 4;
-  GRect name_box = GRect(TEXT_X, cell.origin.y + 1, w, 3 * 20);
+  int16_t name_h = NAME_LINES * font_line_height(s_font_name);
+  int16_t sub_h = SUB_LINES * font_line_height(s_font_sub);
+  GRect name_box = GRect(TEXT_X, cell.origin.y + 1, w, name_h);
   GSize name_size = graphics_text_layout_get_content_size(
       it->name, s_font_name, name_box, GTextOverflowModeWordWrap, GTextAlignmentLeft);
 
@@ -212,7 +238,7 @@ static void draw_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_ind
 
   char sub[LOC_LEN + 16];
   build_subtitle(it, sub, sizeof(sub));
-  GRect sub_box = GRect(TEXT_X, cell.origin.y + 2 + name_size.h, w, 2 * 16);
+  GRect sub_box = GRect(TEXT_X, cell.origin.y + 1 + name_size.h, w, sub_h);
   graphics_draw_text(ctx, sub, s_font_sub, sub_box, GTextOverflowModeWordWrap,
                      GTextAlignmentLeft, NULL);
 }
@@ -236,14 +262,11 @@ static int16_t get_cell_height(struct MenuLayer *menu_layer, MenuIndex *cell_ind
   if (idx < 0) return 44;
   const Item *it = &s_items[idx];
   int16_t w = bounds.size.w - TEXT_X - 4;
-  GRect box = GRect(0, 0, w, 200);
-  GSize name_size = graphics_text_layout_get_content_size(
-      it->name, s_font_name, box, GTextOverflowModeWordWrap, GTextAlignmentLeft);
+  GSize name_size = measure_text(it->name, s_font_name, w, NAME_LINES);
   char sub[LOC_LEN + 16];
   build_subtitle(it, sub, sizeof(sub));
-  GSize sub_size = graphics_text_layout_get_content_size(
-      sub, s_font_sub, box, GTextOverflowModeWordWrap, GTextAlignmentLeft);
-  int16_t h = name_size.h + sub_size.h + 2 * CELL_PAD + 2;
+  GSize sub_size = measure_text(sub, s_font_sub, w, SUB_LINES);
+  int16_t h = 1 + name_size.h + sub_size.h + 2 * CELL_PAD;
   if (h < BOX_SIZE + 8) h = BOX_SIZE + 8;
   return h;
 }

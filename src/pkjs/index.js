@@ -23,6 +23,14 @@ var FLAG_CACHED = 0x01;
 
 var GRAPHQL_URL = 'https://www.heb.com/graphql';
 
+// A settings URL pointing at heb.com uses the real gateway. Any other URL is
+// used directly as a GraphQL endpoint (proxy/mock for testing, or a relay if
+// HEB's bot protection ever blocks the phone). The list id is extracted via
+// UUID from wherever it appears in the URL.
+function endpointFor(url) {
+  return /heb\.com/i.test(url) ? GRAPHQL_URL : String(url).trim();
+}
+
 // Keep in sync with src/c/main.c buffer sizes.
 var MAX_ITEMS = 300;
 var NAME_MAX = 63;
@@ -160,7 +168,12 @@ function sendList(listName, cached) {
         return;
       }
       sendItem(i, function (okItem) {
-        if (!okItem) return;
+        if (!okItem) {
+          // Connection dropped mid-list; tell the watch so it is not stuck
+          // at "Loading..." (this send will usually fail too, but try).
+          sendStatus(ST_ERROR, 'Connection lost while syncing list');
+          return;
+        }
         i++;
         next();
       });
@@ -210,6 +223,11 @@ function fetchList() {
     sendStatus(ST_NO_URL, 'Set list URL in phone settings');
     return;
   }
+  var endpoint = endpointFor(url);
+  if (!/^https?:\/\//i.test(endpoint)) {
+    sendStatus(ST_NO_URL, 'Set list URL in phone settings');
+    return;
+  }
   fetching = true;
   sendStatus(ST_LOADING, 'Loading...');
 
@@ -224,7 +242,7 @@ function fetchList() {
     }
   });
 
-  xhrPost(GRAPHQL_URL, body, function (status, text) {
+  xhrPost(endpoint, body, function (status, text) {
     fetching = false;
     var parsed = null;
     if (status === 200 && text) {
