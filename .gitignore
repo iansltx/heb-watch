@@ -1,0 +1,19 @@
+# Build artifacts
+build/
+
+# Pebble packages (reinstall with `pebble package install`)
+node_modules/
+
+# Research scratch space (browser automation, captured traffic, chunks)
+.scratch/
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# npm
+npm-debug.log
+package-lock.json

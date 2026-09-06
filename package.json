@@ -1,0 +1,51 @@
+{
+  "name": "heb-watch",
+  "author": "ian",
+  "version": "0.1.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {
+    "@rebble/clay": "^1.1.0"
+  },
+  "pebble": {
+    "displayName": "HEB List",
+    "uuid": "7f4d2c88-9b1e-4d6a-a3f2-58c07d4e91ab",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "chalk",
+      "diorite",
+      "emery",
+      "flint",
+      "gabbro"
+    ],
+    "capabilities": ["configurable"],
+    "watchapp": {
+      "watchface": false
+    },
+    "messageKeys": [
+      "ListUrl",
+      "HideChecked",
+      "AppListBegin",
+      "AppItemIndex",
+      "AppItemName",
+      "AppItemLocation",
+      "AppItemChecked",
+      "AppItemQty",
+      "AppItemGroup",
+      "AppEndOfList",
+      "AppListFlags",
+      "AppStatus",
+      "AppStatusMessage",
+      "AppListName",
+      "AppItemCount",
+      "AppToggleItem",
+      "AppRefresh"
+    ],
+    "resources": {
+      "media": []
+    }
+  }
+}
