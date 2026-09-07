@@ -33,12 +33,6 @@ module.exports = [
         ]
       },
       {
-        type: 'toggle',
-        messageKey: 'ResetChecks',
-        label: 'Forget local check-offs',
-        defaultValue: false
-      },
-      {
         type: 'button',
         id: 'forget-button',
         primary: true,
