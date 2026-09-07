@@ -8,9 +8,10 @@ shopping list on your wrist and lets you check items off while you shop.
 * Items are grouped by category with inverted section headers.
 * Select toggles an item's check (box fills + strikethrough); long-press select
   refreshes from H-E-B; select on the info row also refreshes.
-* Sort order is configurable in settings: category (default), aisle (store
-  location, asc/desc), A-Z, Z-A — passed through to H-E-B's query; on any
-  non-category sort the category headers are hidden.
+* Sort order is configurable in settings, matching H-E-B's own options:
+  category (default), most efficient route (store-location order, asc/desc),
+  A-Z, Z-A — passed through to H-E-B's query; on any non-category sort the
+  category headers are hidden.
 * Touch (Core Time 2 / Core 2 Duo): swipe to scroll the list, tap an item to
   check it off, tap the info row to refresh. Requires *Touch navigation*
   enabled in the watch's system settings; buttons keep working either way.
@@ -83,9 +84,9 @@ pebble install --emulator basalt
 ```
 
 The injector also accepts `[hide_checked] [sort_order]` (one of `category`,
-`aisle`, `aisle-desc`, `az`, `za`) for testing sorts; the mock honors the
-requested sort, and the real gateway's sort enum is documented in
-`docs/api-notes.md`.
+`aisle`, `aisle-desc`, `az`, `za` — `aisle` is H-E-B's "most efficient route")
+for testing sorts; the mock honors the requested sort, and the real gateway's
+sort enum is documented in `docs/api-notes.md`.
 
 Any URL containing a UUID that is **not** heb.com is used verbatim as the GraphQL
 endpoint (that's how the mock works; it also doubles as a relay escape hatch if

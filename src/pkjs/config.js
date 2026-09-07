@@ -26,8 +26,8 @@ module.exports = [
         defaultValue: 'category',
         options: [
           { label: 'Category', value: 'category' },
-          { label: 'Aisle', value: 'aisle' },
-          { label: 'Aisle (reversed)', value: 'aisle-desc' },
+          { label: 'Most efficient route', value: 'aisle' },
+          { label: 'Most efficient route (reverse)', value: 'aisle-desc' },
           { label: 'A - Z', value: 'az' },
           { label: 'Z - A', value: 'za' }
         ]
