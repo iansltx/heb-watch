@@ -18,6 +18,9 @@ shopping list on your wrist and lets you check items off while you shop.
 * Check-off state is **local** (per item, persisted on the phone) — H-E-B's public
   API does not expose a check-off mutation for shared lists, which are view-only
   to guests. See `docs/api-notes.md` for details.
+* A **"Forget check-offs and reload"** button in the settings page restores the
+  list as H-E-B has it: local check-offs and the cached copy are dropped and
+  the list refetches immediately.
 * The list is cached on the phone, so the app opens instantly with the last known
   list and refreshes in the background.
 * The header row shows the remaining count in the title — `(5) List name`, or

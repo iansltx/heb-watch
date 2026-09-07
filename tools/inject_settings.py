@@ -23,6 +23,7 @@ platform = sys.argv[1] if len(sys.argv) > 1 else "basalt"
 url = sys.argv[2] if len(sys.argv) > 2 else ""
 hide = (sys.argv[3] if len(sys.argv) > 3 else "false") == "true"
 sort_order = sys.argv[4] if len(sys.argv) > 4 else "category"
+reset = (sys.argv[5] if len(sys.argv) > 5 else "false") == "true"
 
 sdk_dirs = sorted(glob.glob(os.path.join(PERSIST, "[0-9]*.[0-9]*.[0-9]*")), reverse=True)
 if not sdk_dirs:
@@ -31,6 +32,10 @@ if not sdk_dirs:
 path = os.path.join(sdk_dirs[0], platform, "localstorage", UUID)
 os.makedirs(os.path.dirname(path), exist_ok=True)
 db = dbm.dumb.open(path, "c")
-db["clay-settings"] = json.dumps({"ListUrl": url, "HideChecked": hide, "SortOrder": sort_order})
+settings = {"ListUrl": url, "HideChecked": hide, "SortOrder": sort_order}
+if reset:
+    settings["ResetChecks"] = True
+db["clay-settings"] = json.dumps(settings)
 db.close()
-print("injected settings for %s (%s): %s sort=%s" % (platform, os.path.basename(sdk_dirs[0]), url, sort_order))
+print("injected settings for %s (%s): %s sort=%s reset=%s" %
+      (platform, os.path.basename(sdk_dirs[0]), url, sort_order, reset))

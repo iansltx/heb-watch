@@ -34,6 +34,20 @@ module.exports = [
       },
       {
         type: 'toggle',
+        messageKey: 'ResetChecks',
+        label: 'Forget local check-offs',
+        defaultValue: false
+      },
+      {
+        type: 'button',
+        id: 'forget-button',
+        primary: true,
+        defaultValue: 'Forget check-offs and reload',
+        description: 'Drops local check-offs and the cached copy, then reloads '
+          + 'the list as H-E-B has it.'
+      },
+      {
+        type: 'toggle',
         messageKey: 'HideChecked',
         label: 'Hide checked items',
         defaultValue: false

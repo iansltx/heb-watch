@@ -9,7 +9,8 @@
 
 var Clay = require('@rebble/clay');
 var clayConfig = require('./config');
-var clay = new Clay(clayConfig);
+var customClay = require('./custom-clay');
+var clay = new Clay(clayConfig, customClay);
 
 // Status codes — must match src/c/main.c
 var ST_LOADING = 0;
@@ -280,7 +281,21 @@ function listStreamDone() {
   }
 }
 
+// One-shot flag from the settings page: drop local check overrides and the
+// cached list so the next fetch shows the list as H-E-B has it. The switch
+// turns itself back off so it only fires once.
+function consumeResetFlag() {
+  var s = settings();
+  if (!s.ResetChecks) return;
+  s.ResetChecks = false;
+  localStorage.setItem('clay-settings', JSON.stringify(s));
+  localStorage.removeItem('heb-checks');
+  localStorage.removeItem('heb-cache');
+  console.log('reset: local checks and cache cleared');
+}
+
 function fetchList() {
+  consumeResetFlag();
   if (fetching) return;
   if (streaming) {
     pendingFetch = true;
