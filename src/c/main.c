@@ -243,12 +243,17 @@ static void draw_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_ind
                      GTextAlignmentLeft, NULL);
 }
 
+// Sections with an empty group (e.g. non-category sorts) render without a header bar.
+static bool section_has_header(uint16_t section_index) {
+  if (section_index == 0 || section_index > s_section_count) return false;
+  const Section *sec = &s_sections[section_index - 1];
+  return sec->count > 0 && s_items[sec->start].group[0] != '\0';
+}
+
 static void draw_header(GContext *ctx, const Layer *cell_layer, uint16_t section_index,
                         void *callback_context) {
-  if (section_index == 0) return;
-  if (section_index > s_section_count) return;
+  if (!section_has_header(section_index)) return;
   const Section *sec = &s_sections[section_index - 1];
-  if (sec->count == 0) return;
   // Inverted header bar: white background, black text (menu_cell_basic_header_draw
   // alone renders black text and is invisible on this menu's black background).
   GRect bounds = layer_get_bounds(cell_layer);
@@ -283,7 +288,7 @@ static int16_t get_cell_height(struct MenuLayer *menu_layer, MenuIndex *cell_ind
 
 static int16_t get_header_height(struct MenuLayer *menu_layer, uint16_t section_index,
                                  void *callback_context) {
-  return (section_index == 0) ? 0 : MENU_CELL_BASIC_HEADER_HEIGHT;
+  return section_has_header(section_index) ? MENU_CELL_BASIC_HEADER_HEIGHT : 0;
 }
 
 static uint16_t get_num_sections(struct MenuLayer *menu_layer, void *callback_context) {

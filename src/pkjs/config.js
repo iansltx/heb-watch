@@ -20,6 +20,19 @@ module.exports = [
         defaultValue: ''
       },
       {
+        type: 'select',
+        messageKey: 'SortOrder',
+        label: 'Sort list by',
+        defaultValue: 'category',
+        options: [
+          { label: 'Category', value: 'category' },
+          { label: 'Aisle', value: 'aisle' },
+          { label: 'Aisle (reversed)', value: 'aisle-desc' },
+          { label: 'A - Z', value: 'az' },
+          { label: 'Z - A', value: 'za' }
+        ]
+      },
+      {
         type: 'toggle',
         messageKey: 'HideChecked',
         label: 'Hide checked items',

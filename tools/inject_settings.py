@@ -7,7 +7,7 @@ is not available. Run the mock gateway first (tools/mock-heb-graphql.py), then:
     python3 tools/inject_settings.py basalt "http://localhost:8917/graphql/<uuid>"
     pebble install --emulator basalt
 
-Usage: inject_settings.py <platform> <list_url> [hide_checked]
+Usage: inject_settings.py <platform> <list_url> [hide_checked] [sort_order]
 """
 
 import dbm.dumb
@@ -22,6 +22,7 @@ PERSIST = os.path.expanduser("~/Library/Application Support/Pebble SDK")
 platform = sys.argv[1] if len(sys.argv) > 1 else "basalt"
 url = sys.argv[2] if len(sys.argv) > 2 else ""
 hide = (sys.argv[3] if len(sys.argv) > 3 else "false") == "true"
+sort_order = sys.argv[4] if len(sys.argv) > 4 else "category"
 
 sdk_dirs = sorted(glob.glob(os.path.join(PERSIST, "[0-9]*.[0-9]*.[0-9]*")), reverse=True)
 if not sdk_dirs:
@@ -30,6 +31,6 @@ if not sdk_dirs:
 path = os.path.join(sdk_dirs[0], platform, "localstorage", UUID)
 os.makedirs(os.path.dirname(path), exist_ok=True)
 db = dbm.dumb.open(path, "c")
-db["clay-settings"] = json.dumps({"ListUrl": url, "HideChecked": hide})
+db["clay-settings"] = json.dumps({"ListUrl": url, "HideChecked": hide, "SortOrder": sort_order})
 db.close()
-print("injected settings for %s (%s): %s" % (platform, os.path.basename(sdk_dirs[0]), url))
+print("injected settings for %s (%s): %s sort=%s" % (platform, os.path.basename(sdk_dirs[0]), url, sort_order))

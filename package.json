@@ -28,6 +28,7 @@
     "messageKeys": [
       "ListUrl",
       "HideChecked",
+      "SortOrder",
       "AppListBegin",
       "AppItemIndex",
       "AppItemName",

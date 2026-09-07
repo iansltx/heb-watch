@@ -55,6 +55,18 @@ ITEMS = [
 
 
 class Handler(BaseHTTPRequestHandler):
+    @staticmethod
+    def _sorted_items(items, sort, direction):
+        reverse = (direction == "DESC")
+        if sort == "ALPHABETICAL":
+            key = lambda i: str(i.get("genericName") or i["product"]["fullDisplayName"]).lower()
+        elif sort == "STORE_LOCATION":
+            key = lambda i: (str(i.get("product", {}).get("productLocation", {}).get("location", "")).lower(),
+                             str(i.get("genericName") or i.get("product", {}).get("fullDisplayName", "")).lower())
+        else:  # CATEGORY — authored order is already grouped by category
+            key = lambda i: 0
+        return sorted(items, key=key, reverse=reverse) if sort != "CATEGORY" else list(items)
+
     def do_POST(self):
         try:
             raw = self.rfile.read(int(self.headers.get("Content-Length", 0)))
@@ -62,8 +74,13 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, json.JSONDecodeError):
             body = {}
         list_id = None
+        sort, direction = "CATEGORY", "ASC"
         try:
-            list_id = body["variables"]["input"]["id"]
+            inp = body["variables"]["input"]
+            list_id = inp["id"]
+            page = inp.get("page") or {}
+            sort = str(page.get("sort") or "CATEGORY").upper()
+            direction = str(page.get("sortDirection") or "ASC").upper()
         except (KeyError, TypeError):
             pass
         if not list_id:
@@ -79,7 +96,11 @@ class Handler(BaseHTTPRequestHandler):
                         "id": list_id,
                         "name": "Allandale Shopping List",
                         "totalItemCount": len(ITEMS),
-                        "itemPage": {"items": ITEMS},
+                        "itemPage": {
+                            "thisPage": {"totalCount": len(ITEMS), "page": 0, "size": 5000,
+                                         "sort": sort, "sortDirection": direction},
+                            "items": self._sorted_items(ITEMS, sort, direction)
+                        },
                         "__typename": "ShoppingListV2",
                     }
                 }

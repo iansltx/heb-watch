@@ -66,6 +66,11 @@ Variables (schema: `GetShoppingListInputV2 { id: ID!, page: ShoppingListItemPage
 {"input": {"id": "<list-uuid>", "page": {"page": 0, "size": 5000, "sort": "CATEGORY", "sortDirection": "ASC"}}}
 ```
 
+Sort enum (from heb.com's own shared-list bundle): `CATEGORY` (default),
+`STORE_LOCATION`, `ALPHABETICAL`; `sortDirection` is `ASC`/`DESC` (the site's
+"Aisle reversed" = STORE_LOCATION/DESC, "Z - A" = ALPHABETICAL/DESC). This app
+exposes those five combinations through the `SortOrder` setting.
+
 `page` is optional; defaults request the full dataset.
 
 ### Response shape

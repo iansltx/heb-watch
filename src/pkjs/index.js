@@ -23,6 +23,27 @@ var FLAG_CACHED = 0x01;
 
 var GRAPHQL_URL = 'https://www.heb.com/graphql';
 
+// Sort orders offered in settings, mapped to the gateway's ShoppingListItemPageInputV2
+// enum values (mirrors heb.com's own shared-list UI: sort=CATEGORY | STORE_LOCATION |
+// ALPHABETICAL, sortDirection=ASC | DESC).
+var SORTS = {
+  'category':   { sort: 'CATEGORY',       direction: 'ASC'  },
+  'aisle':      { sort: 'STORE_LOCATION', direction: 'ASC'  },
+  'aisle-desc': { sort: 'STORE_LOCATION', direction: 'DESC' },
+  'az':         { sort: 'ALPHABETICAL',   direction: 'ASC'  },
+  'za':         { sort: 'ALPHABETICAL',   direction: 'DESC' }
+};
+
+// Category headers are only meaningful when the server returns items grouped by
+// category; other sorts interleave groups, so they are blanked (one section).
+function sortConfig() {
+  return SORTS[settings().SortOrder] || SORTS.category;
+}
+
+function useCategoryGroups() {
+  return sortConfig().sort === 'CATEGORY';
+}
+
 // A settings URL pointing at heb.com uses the real gateway. Any other URL is
 // used directly as a GraphQL endpoint (proxy/mock for testing, or a relay if
 // HEB's bot protection ever blocks the phone). The list id is extracted via
@@ -128,7 +149,7 @@ function mapItem(raw) {
     id: raw.id,
     name: String(name),
     location: String(location),
-    group: String(raw.groupHeader || ''),
+    group: useCategoryGroups() ? String(raw.groupHeader || '') : '',
     qty: raw.quantity || 1,
     checked: !!raw.checked
   };
@@ -234,9 +255,14 @@ function xhrPost(url, body, onDone) {
   xhr.setRequestHeader('Content-Type', 'application/json');
   xhr.setRequestHeader('Accept', 'application/json');
   xhr.onload = function () {
-    onDone(xhr.status, xhr.responseText);
+    try {
+      onDone(xhr.status, xhr.responseText);
+    } catch (e) {
+      console.log('list handler threw: ' + (e && e.message ? e.message : String(e)));
+    }
   };
   xhr.onerror = function () {
+    console.log('xhr onerror');
     onDone(0, '');
   };
   xhr.timeout = 20000;
@@ -278,10 +304,12 @@ function fetchList() {
     operationName: 'getSharedList',
     query: QUERY,
     variables: {
-      input: {
-        id: listId,
-        page: { page: 0, size: 5000, sort: 'CATEGORY', sortDirection: 'ASC' }
-      }
+      input: (function () {
+        var input = { id: listId };
+        var sort = sortConfig();
+        input.page = { page: 0, size: 5000, sort: sort.sort, sortDirection: sort.direction };
+        return input;
+      })()
     }
   });
 
@@ -306,6 +334,7 @@ function fetchList() {
     }
 
     // Failure: fall back to cache if it is for the same list.
+    console.log('fetch failed: status=' + status + ' bodyLen=' + (text ? text.length : -1));
     var cache = cachedList();
     if (cache && cache.url === listId && cache.payload && cache.payload.items) {
       presentList(cache.payload.name, cache.payload.items, listId, true);
