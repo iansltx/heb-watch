@@ -63,7 +63,6 @@ static char s_list_name[48];
 static char s_status_message[96];
 static uint8_t s_status = ST_LOADING;
 static uint8_t s_list_flags = 0;
-static time_t s_updated_at = 0;
 
 static GFont s_font_name;
 static GFont s_font_sub;
@@ -179,6 +178,13 @@ static void build_subtitle(const Item *it, char *buf, size_t cap) {
   }
 }
 
+// Build the info-row title: remaining count (with a * marker for cached lists)
+// first, so it survives truncation, then the list name.
+static void build_title(char *buf, size_t cap) {
+  snprintf(buf, cap, "(%d%s) %s", count_unchecked(),
+           (s_list_flags & FLAG_CACHED) ? "*" : "", s_list_name);
+}
+
 // Line height of a font, derived by measuring reference glyphs.
 static int16_t font_line_height(GFont font) {
   GRect box = GRect(0, 0, 100, 300);
@@ -203,14 +209,18 @@ static void draw_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_ind
   graphics_context_set_antialiased(ctx, true);
 
   if (cell_index->section == 0) {
-    // Info row: list name + status line
-    const char *line2 = (s_status_message[0] != '\0') ? s_status_message : "";
+    // Info row: "(N*) list name" title, plus a status line only while there is
+    // something transient to say (loading/error); height shrinks accordingly.
+    char title[NAME_LEN + 12];
+    build_title(title, sizeof(title));
     GRect box1 = GRect(6, cell.origin.y + 2, cell.size.w - 10, 22);
-    graphics_draw_text(ctx, s_list_name[0] ? s_list_name : "HEB List", s_font_name, box1,
+    graphics_draw_text(ctx, title, s_font_name, box1,
                        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-    GRect box2 = GRect(6, cell.origin.y + 24, cell.size.w - 10, 18);
-    graphics_draw_text(ctx, line2, s_font_sub, box2,
-                       GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    if (s_status_message[0] != '\0') {
+      GRect box2 = GRect(6, cell.origin.y + 24, cell.size.w - 10, 18);
+      graphics_draw_text(ctx, s_status_message, s_font_sub, box2,
+                         GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    }
     return;
   }
 
@@ -271,7 +281,7 @@ static int16_t get_cell_height(struct MenuLayer *menu_layer, MenuIndex *cell_ind
                                void *callback_context) {
   GRect bounds = layer_get_bounds(menu_layer_get_layer(menu_layer));
   if (cell_index->section == 0) {
-    return 44; // info row
+    return (s_status_message[0] != '\0') ? 44 : 24; // info row
   }
   int16_t idx = cell_to_item_index(cell_index);
   if (idx < 0) return 44;
@@ -346,7 +356,6 @@ static void select_long_click(struct MenuLayer *menu_layer, MenuIndex *cell_inde
 // ---------------------------------------------------------------------------
 
 static void update_status_line(void) {
-  char buf[96];
   switch (s_status) {
     case ST_LOADING:
       safe_copy(s_status_message, sizeof(s_status_message), "Loading...");
@@ -361,28 +370,10 @@ static void update_status_line(void) {
     case ST_EMPTY:
       safe_copy(s_status_message, sizeof(s_status_message), "List is empty");
       break;
-    default: {
-      char left[16];
-      snprintf(left, sizeof(left), "%d left", count_unchecked());
-      char when[16];
-      if (s_updated_at > 0) {
-        struct tm *tm = localtime(&s_updated_at);
-        if (tm) {
-          strftime(when, sizeof(when), "%I:%M%p", tm);
-        } else {
-          when[0] = '\0';
-        }
-      } else {
-        when[0] = '\0';
-      }
-      snprintf(buf, sizeof(buf), "%s%s%s%s",
-               left,
-               (s_list_flags & FLAG_CACHED) ? " (cached)" : "",
-               when[0] ? " " : "",
-               when);
-      safe_copy(s_status_message, sizeof(s_status_message), buf);
+    default:
+      // Ready: no status line — the title carries the remaining count.
+      s_status_message[0] = '\0';
       break;
-    }
   }
 }
 
@@ -493,7 +484,6 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     Tuple *msg = dict_find(iter, MESSAGE_KEY_AppStatusMessage);
     safe_copy(s_status_message, sizeof(s_status_message),
               msg ? msg->value->cstring : "");
-    s_updated_at = time(NULL);
     if (s_item_count == 0 && s_status != ST_ERROR) {
       s_status = ST_EMPTY;
     }

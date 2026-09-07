@@ -20,6 +20,9 @@ shopping list on your wrist and lets you check items off while you shop.
   to guests. See `docs/api-notes.md` for details.
 * The list is cached on the phone, so the app opens instantly with the last known
   list and refreshes in the background.
+* The header row shows the remaining count in the title — `(5) List name`, or
+  `(5*)` when displaying the cached list — and shrinks to one line; a second
+  status line appears only while loading or on errors.
 
 ## Setup
 
